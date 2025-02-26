@@ -1,0 +1,23 @@
+{
+  "name": "file-input-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/everywangBUG/file-input.git"
+  },
+  "author": "everywangbug@gmail.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/everywangBUG/file-input/issues"
+  },
+  "homepage": "https://github.com/everywangBUG/file-input#readme",
+  "dependencies": {
+    "express.js": "1.0.0",
+    "multer": "1.4.5-lts.1"
+  }
+}
