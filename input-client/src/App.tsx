@@ -43,7 +43,6 @@ const App: FC = () => {
     
     setUploading(true);
     const chunks = [];
-    console.log(file, 'file')
     let offset = 0;
     while(offset < file?.size) {
       const chunk = file?.slice(offset, offset + chunkSize);
@@ -53,11 +52,12 @@ const App: FC = () => {
 
     try {
       // 先检查文件是否存在(秒传)
-      const isExist = await fetch(`http://localhost:3000/check-file?fileMD5=${fileMD5}`);
-      if (isExist) {
-        alert('File already exists');
-        return;
-      }
+      const res = await fetch(`http://localhost:3000/check-file?fileMD5=${fileMD5}`);
+      console.log(res, 'res')
+      // if (res) {
+      //   alert('File already exists');
+      //   return;
+      // }
 
       // 逐个上传分片
       for (const { chunk, index } of chunks) {
@@ -71,7 +71,7 @@ const App: FC = () => {
         });
       }
       // 所有文件上传完成后，合并文件
-      await fetch('http://localhost:3000/merge-file', {
+      await fetch('http://localhost:3000/merge-chunks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

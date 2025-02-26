@@ -10,6 +10,18 @@ const upload = multer({ dest: 'uploads/' });
 // 存储分片元数据（实际项目中使用数据库）
 const chunkMetadata = new Map();
 
+// 跨域配置
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Content-Length, Authorization, Accept, X-Requested-With');
+  res.header('Access-Control-Allow-Methods', 'PUT, POST, GET, DELETE, OPTIONS');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204); // 预检请求返回 204 No Content
+  } else {
+    next();
+  }
+})
+
 app.post('/upload-chunk', upload.single('file'), (req, res) => {
   // 从请求中获取分片的索引和文件名
   const { index, filename }  = req.body;
@@ -30,7 +42,7 @@ app.post('/upload-chunk', upload.single('file'), (req, res) => {
   res.sendStatus(200);
 })
 
-app.get('check-file', (req, res) => {
+app.get('/check-file', (req, res) => {
   const { fileMD5 } = req.query;
   // 检查数据库是否存在该文件
   const exists = chunkMetadata.has(fileMD5); // 假设文件名字就是MD5值
@@ -53,6 +65,14 @@ app.post('/merge-chunks', (req, res) => {
     readStream.on('end', () => {
       fs.unlinkSync(chunkPath); // 删除已合并的分片
     });
+  })
+  writeSteam.on('finish', () => {
+    const fileMD5Hash = crypto.createHash('md5').update(fileName).digest('hex');
+    if (fileMD5 === fileMD5Hash) {
+      res.send('文件合并成功');
+    } else {
+      res.sendStatus(500).send('文件合并失败');
+    }
   })
 })
 
