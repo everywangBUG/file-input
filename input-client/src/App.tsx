@@ -27,7 +27,9 @@ const App: FC = () => {
     fileReader.onload = async (e) => {
       if (e.target?.result) {
         spark.append(e.target.result as ArrayBuffer);
-        setFileMD5(spark.end());
+        const md5Hash = spark.end();
+        console.log(md5Hash, 'md5Hash');
+        setFileMD5(md5Hash);
       }
     }
 
@@ -53,25 +55,26 @@ const App: FC = () => {
     try {
       // 先检查文件是否存在(秒传)
       const res = await fetch(`http://localhost:3000/check-file?fileMD5=${fileMD5}`);
-      console.log(res, 'res')
-      // if (res) {
-      //   alert('File already exists');
-      //   return;
-      // }
+      const data = await res.json();
+      console.log(data, 'data')
+      if (data.exists) {
+        alert('File already exists');
+        return;
+      }
 
       // 逐个上传分片
       for (const { chunk, index } of chunks) {
         const formData  = new FormData();
         formData.append('file', chunk);
         formData.append('index', index.toString());
-        formData.append('fileName', file.name);
+        formData.append('filename', file.name);
         await fetch('http://localhost:3000/upload-chunk', {
           method: 'POST',
           body: formData
         });
       }
       // 所有文件上传完成后，合并文件
-      await fetch('http://localhost:3000/merge-chunks', {
+      const mergeResponse = await fetch('http://localhost:3000/merge-chunks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -81,7 +84,12 @@ const App: FC = () => {
           fileMD5
         })
       });
-      alert('Upload successful');
+      if (mergeResponse.ok) {
+         alert('Upload successful');
+      } else {
+        const errText = await mergeResponse.text();
+        alert(`Upload failed: ${errText}`);
+      }
     } catch (error) {
       console.error('upload fail', error);
     } finally {
