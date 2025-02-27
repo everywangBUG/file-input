@@ -37,6 +37,13 @@ const App: FC = () => {
     fileReader.readAsArrayBuffer(file);
   }
 
+  const checkChunks = async (fileMD5: string) => {
+    console.log(fileMD5, 'fileMD5')
+    const res = await fetch(`http://localhost:3000/check-chunks?fileMD5=${fileMD5}`);
+    const data = await res.json();
+    return data.chunks;
+  }
+
   const uploadChunks = async () => {
     if (!file) {
       alert('Please select a file');
@@ -44,34 +51,51 @@ const App: FC = () => {
     };
     
     setUploading(true);
-    const chunks = [];
+
+    // 获取已上传的文件分片
+    const uploadedChunks = await checkChunks(fileMD5 as string) || [];
+
+    const totalChunks = Math.ceil(file.size / chunkSize);
     let offset = 0;
-    while(offset < file?.size) {
-      const chunk = file?.slice(offset, offset + chunkSize);
-      chunks.push({chunk, index: offset / chunkSize});
-      offset += chunkSize;
-    }
+    // while(offset < file?.size) {
+    //   const chunk = file?.slice(offset, offset + chunkSize);
+    //   chunks.push({chunk, index: offset / chunkSize});
+    //   offset += chunkSize;
+    // }
 
     try {
       // 先检查文件是否存在(秒传)
       const res = await fetch(`http://localhost:3000/check-file?fileMD5=${fileMD5}`);
       const data = await res.json();
-      console.log(data, 'data')
-      if (data.exists) {
-        alert('File already exists');
-        return;
-      }
+      // if (data.exists) {
+      //   alert('File already exists');
+      //   return;
+      // }
 
       // 逐个上传分片
-      for (const { chunk, index } of chunks) {
-        const formData  = new FormData();
+      for (let i = 0; i < totalChunks; i++) {
+        if (uploadedChunks.includes(i)) {
+          console.log(`Chunk ${i} already uploaded, skipping.`);
+          continue;
+        }
+
+        const chunk = file.slice(offset, offset + chunkSize);
+        const formData = new FormData();
         formData.append('file', chunk);
-        formData.append('index', index.toString());
-        formData.append('filename', file.name);
-        await fetch('http://localhost:3000/upload-chunk', {
+        formData.append('index', i.toString());
+        formData.append('filename', fileMD5 || '');
+
+        const uploadResponse = await fetch('http://localhost:3000/upload-chunk', {
           method: 'POST',
           body: formData
         });
+
+        if (!uploadResponse.ok) {
+          const errText = await uploadResponse.text();
+          throw new Error(`Failed to upload chunk ${i}: ${errText}`);
+        }
+
+        offset += chunkSize;
       }
       // 所有文件上传完成后，合并文件
       const mergeResponse = await fetch('http://localhost:3000/merge-chunks', {
@@ -85,6 +109,7 @@ const App: FC = () => {
         })
       });
       if (mergeResponse.ok) {
+        setUploading(false);
          alert('Upload successful');
       } else {
         const errText = await mergeResponse.text();
@@ -100,7 +125,7 @@ const App: FC = () => {
   return (
     <div>
       <input type='file' onChange={handleFileChange} />
-      <button onClick={uploadChunks} disabled={!file || uploading}>
+      <button onClick={uploadChunks} disabled={!file}>
         {uploading ? 'Uploading...' : 'upLoading'}
       </button>
     </div>

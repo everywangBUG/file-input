@@ -25,6 +25,22 @@ app.use((req, res, next) => {
   }
 })
 
+// 检查上传分片
+app.get('/check-chunks', (req, res) => {
+  const { fileMD5 } = req.query;
+  if (!fileMD5) {
+    return res.status(400).send('缺少参数: fileMD5');
+  } 
+
+  // 获取文件的已上传分片
+  const uploadChunks = chunkMetadata.get(fileMD5) || [];
+  // 获取已上传的分片索引
+  const existsChunks = new Set(uploadChunks.map(chunk => chunk.index));
+  // 返回已上传的分片索引
+  res.json({ existsChunks: Array.from(existsChunks) });
+})
+
+// 上传分片文件
 app.post('/upload-chunk', upload.single('file'), (req, res) => {
   // 从请求中获取分片的索引和文件名
   const { index, filename }  = req.body;
@@ -74,7 +90,8 @@ app.post('/merge-chunks', (req, res) => {
   }
 
   // 检查是否所有分片都已经上传
-  const chunksIndices = chunkMetadata.get(fileName) || [];
+  const chunksIndices = chunkMetadata.get(fileMD5) || [];
+  console.log(chunksIndices, 'chunksIndices999')
   if (chunksIndices.length === 0) {
     return res.status(400).send('文件分片未上传完整');
   }
@@ -137,5 +154,6 @@ app.post('/merge-chunks', (req, res) => {
 })
 
 app.listen(3000, () => {
+  console.log(chunkMetadata, 'chunkMetadata')
   console.log('server is running on part 3000')
 })
